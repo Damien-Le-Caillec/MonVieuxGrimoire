@@ -1,47 +1,19 @@
-module.exports = (sequelize, DataTypes) => {
-    const Book = sequelize.define('book', {
-        userId: {
-            type: DataTypes.STRING,
-            allowNull: false
-        },
-        title: {
-            type: DataTypes.STRING,
-            allowNull: false
-        },
-        author: {
-            type: DataTypes.STRING,
-            allowNull: false
-        },
-        imageUrl: {
-            type: DataTypes.STRING,
-            allowNull: false
-        },
-        year: {
-            type: DataTypes.NUMBER,
-            allowNull: false
-        },
-        genre: {
-            type: DataTypes.STRING,
-            allowNull: false
-        },
-        rating: [
-            {
-                userId: {
-                    type: DataTypes.STRING,
-                    allowNull: false
-                },
-                grade: {
-                    type: DataTypes.NUMBER,
-                    allowNull: false
-                }
-            }
-        ],
-        averageRating: {
-            type: DataTypes.NUMBER,
-            allowNull: false
+const mongoose = require('mongoose');
+
+const bookSchema = new mongoose.Schema({
+    userId: { type: String, required: true },
+    title: { type: String, required: true },
+    author: { type: String, required: true },
+    imageUrl: { type: String, required: true },
+    year: { type: Number, required: true },
+    genre: { type: String, required: true },
+    rating: [
+        { 
+            userId: { type: String, required: true }, 
+            grade: { type: Number, required: true } 
         }
-    });
-    return Book;
-}
+    ],
+    averageRating: { type: Number, default: 0 }
+});
 
-
+module.exports = mongoose.model('Book', bookSchema);

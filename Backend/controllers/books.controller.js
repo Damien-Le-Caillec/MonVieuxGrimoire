@@ -1,19 +1,32 @@
 const Book = require('../models/book.model');
 const fs = require('fs');
+const path = require('path');
+const sharp = require('sharp');
 
-exports.createBook = (req, res, next) => {
+exports.createBook = async (req, res, next) => {
   const bookObject = JSON.parse(req.body.book);
   delete bookObject._id;
   delete bookObject._userId;
 
+  const originalImagePath = req.file.path;
+  const optimizedFilename = `optimized-${req.file.filename}`;
+  const optimizedImagePath = path.join('images', optimizedFilename);
+
+  await sharp(originalImagePath)
+    .resize({ width: 800 })
+    .jpeg({ quality: 70 })
+    .toFile(optimizedImagePath);
+
+  fs.unlinkSync(originalImagePath);
+
   const book = new Book({
     ...bookObject,
     userId: req.auth.userId,
-    imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
+    imageUrl: `${req.protocol}://${req.get('host')}/images/${optimizedFilename}`,
   });
 
-  book.save()
-    .then(() => res.status(201).json({ message: 'Livre enregistré !' }))
+  await book.save()
+    .then(() => res.status(201).json({ message: 'Livre enregistré avec image optimisée !' }))
     .catch(error => res.status(400).json({ error }));
 };
 
@@ -35,9 +48,8 @@ exports.rateBook = async (req, res) => {
     const book = await Book.findById(id);
     if (!book) return res.status(404).json({ error: 'Livre non trouvé' });
 
-    book.rating.push({ userId, grade });
-    book.averageRating =
-      book.rating.reduce((sum, r) => sum + r.grade, 0) / book.rating.length;
+    book.ratings.push({ userId, grade });
+    book.averageRating = book.ratings.reduce((sum, r) => sum + r.grade, 0) / book.rating.length;
 
     await book.save();
     res.status(200).json(book);
@@ -46,15 +58,16 @@ exports.rateBook = async (req, res) => {
   }
 };
 
-exports.getBestRatedBooks = (req, res, next) => {
-  Book.find()
-    .sort({ averageRating: -1 })
-    .limit(3)
-    .then(books => res.status(200).json(books))
-    .catch(error => {
-      console.error('erreur dans getBestRatedBooks: ', error);
-      res.status(500).json({ error: 'erreur server lord du tri des livres' });
-    });
+exports.getBestRatedBooks = async (req, res, next) => {
+  try {
+    const books = await Book.find({ averageRating: { $gt: 0 } })
+      .sort({ averageRating: -1 })
+      .limit(3);
+    res.status(200).json(books);
+  } catch (error) {
+    console.error('erreur dans getBestRatedBooks: ', error);
+    res.status(500).json({ error: 'erreur server lord du tri des livres' });
+  }
 };
 
 

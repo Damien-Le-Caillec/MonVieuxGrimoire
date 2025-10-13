@@ -3,7 +3,9 @@ const jwt = require('jsonwebtoken');
 
 const User = require('../models/user.model');
 
-exports.signup = (req, res, next) => {
+exports.signup = (req, res, next) => { // mettre en await
+    //verrifier si il y a un email et mdp de rentré (retourner une erreur 400 si c'est pas le cas)
+
     bcrypt.hash(req.body.password, 10)
         .then(hash => {
             const user = new User({
@@ -12,12 +14,13 @@ exports.signup = (req, res, next) => {
         });
         user.save()
             .then(() => res.status(201).json({ message: 'Utilisateur créé !'}))
-            .catch(error => res.status(400).json({ error }));
+        //    .catch(error => res.status(400).json({ error }));
     })
         .catch(error => res.status(500).json({ error }));
 };
 
 exports.login = (req, res, next) => {
+    //verrifier si il y a un email et mdp de rentré (retourner une erreur 400 si c'est pas le cas)
     User.findOne({email: req.body.email})
     .then(user => {
         if(!user){

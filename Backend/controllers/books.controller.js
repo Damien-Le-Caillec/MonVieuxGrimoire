@@ -12,6 +12,7 @@ exports.createBook = async (req, res, next) => {
   const optimizedFilename = `optimized-${req.file.filename}`;
   const optimizedImagePath = path.join('images', optimizedFilename);
 
+  try {
   await sharp(originalImagePath)
     .resize({ width: 800 })
     .jpeg({ quality: 70 })
@@ -26,8 +27,10 @@ exports.createBook = async (req, res, next) => {
   });
 
   await book.save()
-    .then(() => res.status(201).json({ message: 'Livre enregistré avec image optimisée !' }))
-    .catch(error => res.status(400).json({ error }));
+    res.status(201).json({ message: 'Livre enregistré avec image optimisée !' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
 
@@ -41,12 +44,13 @@ exports.getAllBooks = async (req, res) => {
 };
 
 exports.rateBook = async (req, res) => {
+  //verrifier si j'ai un userId et une note
+  const { id } = req.params;
+  const { userId, grade } = req.body;
+  //erreur si la requette est mal formatée
   try {
-    const { id } = req.params;
-    const { userId, grade } = req.body;
-
     const book = await Book.findById(id);
-    if (!book) return res.status(404).json({ error: 'Livre non trouvé' });
+    if (!book) return res.status(400).json({ error: 'Livre non trouvé' });
 
     book.ratings.push({ userId, grade });
     book.averageRating = book.ratings.reduce((sum, r) => sum + r.grade, 0) / book.rating.length;
@@ -93,11 +97,12 @@ exports.modifyBook = async (req, res, next) => {
     .then((book) =>  {
       if (book.userId != req.auth.userId) {
         res.status(401).json({ message : 'Non-authorisé' });
-      } else {
+        return;
+      } 
         Book.updateOne({ _id: req.params.id }, { ...bookObject, _id: req.params.id })
         .then(() => res.status(200).json({ message : 'Livre modifié!' }))
         .catch(error => res.status(401).json({ error }));
-      }
+      
     })
     .catch((error) => {
       res.status(400).json({ error });
@@ -110,14 +115,15 @@ exports.deleteBook = (req, res, next) => {
     .then(book => {
       if (book.userId != req.auth.userId) {
         res.status(401).json({ message: 'Non-authorisé' });
-      } else {
+        return;
+      } 
         const filename = book.imageUrl.split('/images/')[1];
         fs.unlink(`images/${filename}`, () => {
           Book.deleteOne({ _id: req.params.id })
           .then(() => res.status(200).json({ message: 'Livre supprimé !' }))
           .catch(error => res.status(401).json({ error }));
         });
-      }
+      
     })
     .catch(error => {
       res.status(500).json({ error });
